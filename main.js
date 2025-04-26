@@ -111,7 +111,6 @@ async function handleFileSelect(evt) {
 // ==== PARSING OCR TEXT INTO FORM FIELDS ====
 function parseTextToFields(text) {
   const f = {};
-  // initialize all to empty
   [
     'date','tube','line','weld','pelletType',
     'stdChill','embossChill','tpo','covestro','lubrizol','down3010',
@@ -211,4 +210,66 @@ document.getElementById('save-btn').onclick = () => {
 
   ['Start','End'].forEach(mode => {
     const row = {};
-    row
+    row['Date']         = data.date;
+    row['Tube #']       = data.tube;
+    row['Line']         = data.line;
+    row['Weld']         = data.weld;
+    row['Std Chill']    = data.stdChill;
+    row['Emboss Chill'] = data.embossChill;
+
+    const s1 = +data[`s1${mode.toLowerCase()}`] || '';
+    const s2 = +data[`s2${mode.toLowerCase()}`] || '';
+    const s3 = +data[`s3${mode.toLowerCase()}`] || '';
+    row['S1']  = s1;
+    row['S2']  = s2;
+    row['S3']  = s3;
+    row['Avg'] = (s1 && s2 && s3) ? ((s1 + s2 + s3) / 3).toFixed(2) : '';
+
+    [ ['tpo','TPO'], ['covestro','Covestro'], ['lubrizol','Lubrizol'],
+      ['down3010','3010 Down'], ['pelletType','Pellet Type'],
+      ['extrOnly','Extr Only'], ['doubleTape','Double Tape'],
+      ['remote','Remote'], ['local','Local']
+    ].forEach(([fKey, col]) => {
+      row[col] = data[fKey] || '';
+    });
+
+    [ ['lineSpeed','Line Speed'], ['output','Output'],
+      ['screwSpeed','Screw Speed'], ['dieLip','Die Lip'],
+      ['zone1','Zone1'], ['zone2','Zone2'], ['zone3','Zone3'],
+      ['die1','Die1'], ['die2','Die2'], ['die3','Die3'], ['die4','Die4'],
+      ['pctLoad','% Load'], ['headPressure','Head Pressure']
+    ].forEach(([fKey, col]) => {
+      row[col] = data[fKey] || '';
+    });
+
+    row['Melt Index'] = '';
+    row['Comments']   = `${mode} - ${data.comments || ''}`;
+
+    entries.push(row);
+  });
+
+  saveEntries();
+  dataForm.reset();
+  dataForm.hidden = true;
+};
+
+document.getElementById('export-btn').onclick = () => {
+  if (!entries.length) {
+    alert('No entries to export!');
+    return;
+  }
+  const header = [
+    'Date','Tube #','Line','Weld','Std Chill','Emboss Chill',
+    'S1','S2','S3','Avg','TPO','Covestro','Lubrizol','3010 Down',
+    'Pellet Type','Extr Only','Double Tape','Line Speed','Output',
+    'Remote','Local','Screw Speed','Die Lip','Zone1','Zone2','Zone3',
+    'Die1','Die2','Die3','Die4','% Load','Head Pressure','Melt Index','Comments'
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(entries, { header, origin: 'A1' });
+  XLSX.utils.book_append_sheet(wb, ws, 'Scans');
+  XLSX.writeFile(wb, 'scan-log.xlsx');
+};
+
+// ==== INITIALIZE ====
+renderEntriesTable();
