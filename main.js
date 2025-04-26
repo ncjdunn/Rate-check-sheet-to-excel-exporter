@@ -64,24 +64,54 @@ async function handleFileSelect(evt) {
   scanBtn.disabled = false;
   dataForm.hidden = true;
 
-  scanBtn.onclick = async () => {
+  scanBtn.onclick = () => {
     scanBtn.disabled = true;
-    try {
-      const { data: { text } } = await Tesseract.recognize(file, 'eng');
-      const fields = parseTextToFields(text);
-      autoFillForm(fields);
-      dataForm.hidden = false;
-      scanBtn.hidden = true;
-    } catch (err) {
-      alert('OCR failed: ' + err.message);
+
+    // 1) Load file into an image object
+    const img = new Image();
+    img.onload = async () => {
+      // 2) Upscale if too small
+      const MIN_WIDTH = 300;
+      let source = img;
+      if (img.naturalWidth < MIN_WIDTH) {
+        const scale = MIN_WIDTH / img.naturalWidth;
+        const canvas = document.createElement('canvas');
+        canvas.width  = img.naturalWidth * scale;
+        canvas.height = img.naturalHeight * scale;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        source = canvas;
+      }
+
+      // 3) Run OCR on the properly sized source
+      try {
+        console.log('⏳ Starting OCR on a', source.width, '×', source.height, 'px image…');
+        const { data: { text } } = await Tesseract.recognize(source, 'eng');
+        console.log('✅ OCR complete. Text:', text);
+        const fields = parseTextToFields(text);
+        autoFillForm(fields);
+        dataForm.hidden = false;
+        scanBtn.hidden = true;
+      } catch (err) {
+        console.error('❌ OCR failed:', err);
+        alert('OCR failed: ' + err.message);
+        scanBtn.disabled = false;
+      }
+    };
+
+    img.onerror = () => {
+      alert('Could not load image for OCR.');
       scanBtn.disabled = false;
-    }
+    };
+
+    img.src = URL.createObjectURL(file);
   };
 }
 
 // ==== PARSING OCR TEXT INTO FORM FIELDS ====
 function parseTextToFields(text) {
   const f = {};
+  // initialize all to empty
   [
     'date','tube','line','weld','pelletType',
     'stdChill','embossChill','tpo','covestro','lubrizol','down3010',
@@ -152,6 +182,7 @@ function parseTextToFields(text) {
     }
   }
 
+  // fallbacks
   if (!f.date) {
     const m = text.match(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/);
     if (m) f.date = m[0];
@@ -167,7 +198,7 @@ function parseTextToFields(text) {
 // ==== AUTO-FILL FORM ====
 function autoFillForm(f) {
   const form = document.getElementById('data-form');
-  Object.entries(f).forEach(([key,val]) => {
+  Object.entries(f).forEach(([key, val]) => {
     const inp = form.querySelector(`[name="${key}"]`);
     if (inp) inp.value = val;
   });
@@ -176,68 +207,8 @@ function autoFillForm(f) {
 // ==== SAVE & EXPORT ====
 document.getElementById('save-btn').onclick = () => {
   const data = {};
-  new FormData(dataForm).forEach((v,k) => data[k] = v.trim());
+  new FormData(dataForm).forEach((v, k) => data[k] = v.trim());
 
   ['Start','End'].forEach(mode => {
     const row = {};
-    row['Date']         = data.date;
-    row['Tube #']       = data.tube;
-    row['Line']         = data.line;
-    row['Weld']         = data.weld;
-    row['Std Chill']    = data.stdChill;
-    row['Emboss Chill'] = data.embossChill;
-
-    const s1 = +data[`s1${mode.toLowerCase()}`] || '';
-    const s2 = +data[`s2${mode.toLowerCase()}`] || '';
-    const s3 = +data[`s3${mode.toLowerCase()}`] || '';
-    row['S1']  = s1;
-    row['S2']  = s2;
-    row['S3']  = s3;
-    row['Avg'] = (s1 && s2 && s3) ? ((s1 + s2 + s3) / 3).toFixed(2) : '';
-
-    [
-      ['tpo','TPO'],['covestro','Covestro'],['lubrizol','Lubrizol'],
-      ['down3010','3010 Down'],['pelletType','Pellet Type'],
-      ['extrOnly','Extr Only'],['doubleTape','Double Tape'],
-      ['remote','Remote'],['local','Local']
-    ].forEach(([field,col]) => row[col] = data[field] || '');
-
-    [
-      ['lineSpeed','Line Speed'],['output','Output'],
-      ['screwSpeed','Screw Speed'],['dieLip','Die Lip'],
-      ['zone1','Zone1'],['zone2','Zone2'],['zone3','Zone3'],
-      ['die1','Die1'],['die2','Die2'],['die3','Die3'],['die4','Die4'],
-      ['pctLoad','% Load'],['headPressure','Head Pressure']
-    ].forEach(([field,col]) => row[col] = data[field] || '');
-
-    row['Melt Index'] = '';
-    row['Comments']   = `${mode} - ${data.comments || ''}`;
-
-    entries.push(row);
-  });
-
-  saveEntries();
-  dataForm.reset();
-  dataForm.hidden = true;
-};
-
-document.getElementById('export-btn').onclick = () => {
-  if (!entries.length) {
-    alert('No entries to export!');
-    return;
-  }
-  const header = [
-    'Date','Tube #','Line','Weld','Std Chill','Emboss Chill',
-    'S1','S2','S3','Avg','TPO','Covestro','Lubrizol','3010 Down',
-    'Pellet Type','Extr Only','Double Tape','Line Speed','Output',
-    'Remote','Local','Screw Speed','Die Lip','Zone1','Zone2','Zone3',
-    'Die1','Die2','Die3','Die4','% Load','Head Pressure','Melt Index','Comments'
-  ];
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(entries, { header, origin: 'A1' });
-  XLSX.utils.book_append_sheet(wb, ws, 'Scans');
-  XLSX.writeFile(wb, 'scan-log.xlsx');
-};
-
-// ==== INITIALIZE ====
-renderEntriesTable();
+    row
