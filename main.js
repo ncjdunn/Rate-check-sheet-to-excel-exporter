@@ -82,8 +82,6 @@ async function handleFileSelect(evt) {
 // ==== PARSING OCR TEXT INTO FORM FIELDS ====
 function parseTextToFields(text) {
   const f = {};
-
-  // initialize all fields to empty
   [
     'date','tube','line','weld','pelletType',
     'stdChill','embossChill','tpo','covestro','lubrizol','down3010',
@@ -94,10 +92,7 @@ function parseTextToFields(text) {
     'pctLoad','headPressure','comments'
   ].forEach(k => f[k] = '');
 
-  // split OCR text into lines
   const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-
-  // first, attempt labeled matches
   for (let line of lines) {
     if (/Production\s+Line/i.test(line)) {
       const m = line.match(/L-?(\d)[-–]?([ND])/i);
@@ -157,13 +152,10 @@ function parseTextToFields(text) {
     }
   }
 
-  // fallback: grab any date if label missing
   if (!f.date) {
     const m = text.match(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/);
     if (m) f.date = m[0];
   }
-
-  // fallback: grab any long number if tube missing
   if (!f.tube) {
     const m = text.match(/\b\d{4,}\b/);
     if (m) f.tube = m[0];
@@ -175,7 +167,7 @@ function parseTextToFields(text) {
 // ==== AUTO-FILL FORM ====
 function autoFillForm(f) {
   const form = document.getElementById('data-form');
-  Object.entries(f).forEach(([key, val]) => {
+  Object.entries(f).forEach(([key,val]) => {
     const inp = form.querySelector(`[name="${key}"]`);
     if (inp) inp.value = val;
   });
@@ -184,11 +176,10 @@ function autoFillForm(f) {
 // ==== SAVE & EXPORT ====
 document.getElementById('save-btn').onclick = () => {
   const data = {};
-  new FormData(dataForm).forEach((v, k) => data[k] = v.trim());
+  new FormData(dataForm).forEach((v,k) => data[k] = v.trim());
 
   ['Start','End'].forEach(mode => {
     const row = {};
-    // map form data to Excel columns
     row['Date']         = data.date;
     row['Tube #']       = data.tube;
     row['Line']         = data.line;
@@ -204,38 +195,20 @@ document.getElementById('save-btn').onclick = () => {
     row['S3']  = s3;
     row['Avg'] = (s1 && s2 && s3) ? ((s1 + s2 + s3) / 3).toFixed(2) : '';
 
-    // flags and other fields
     [
-      ['tpo','TPO'],
-      ['covestro','Covestro'],
-      ['lubrizol','Lubrizol'],
-      ['down3010','3010 Down'],
-      ['pelletType','Pellet Type'],
-      ['extrOnly','Extr Only'],
-      ['doubleTape','Double Tape'],
-      ['remote','Remote'],
-      ['local','Local']
-    ].forEach(([field, col]) => {
-      row[col] = data[field] || '';
-    });
+      ['tpo','TPO'],['covestro','Covestro'],['lubrizol','Lubrizol'],
+      ['down3010','3010 Down'],['pelletType','Pellet Type'],
+      ['extrOnly','Extr Only'],['doubleTape','Double Tape'],
+      ['remote','Remote'],['local','Local']
+    ].forEach(([field,col]) => row[col] = data[field] || '');
 
     [
-      ['lineSpeed','Line Speed'],
-      ['output','Output'],
-      ['screwSpeed','Screw Speed'],
-      ['dieLip','Die Lip'],
-      ['zone1','Zone1'],
-      ['zone2','Zone2'],
-      ['zone3','Zone3'],
-      ['die1','Die1'],
-      ['die2','Die2'],
-      ['die3','Die3'],
-      ['die4','Die4'],
-      ['pctLoad','% Load'],
-      ['headPressure','Head Pressure']
-    ].forEach(([field, col]) => {
-      row[col] = data[field] || '';
-    });
+      ['lineSpeed','Line Speed'],['output','Output'],
+      ['screwSpeed','Screw Speed'],['dieLip','Die Lip'],
+      ['zone1','Zone1'],['zone2','Zone2'],['zone3','Zone3'],
+      ['die1','Die1'],['die2','Die2'],['die3','Die3'],['die4','Die4'],
+      ['pctLoad','% Load'],['headPressure','Head Pressure']
+    ].forEach(([field,col]) => row[col] = data[field] || '');
 
     row['Melt Index'] = '';
     row['Comments']   = `${mode} - ${data.comments || ''}`;
