@@ -1,18 +1,19 @@
 // ==== CAMERA & FILE-INPUT WIRING ====
-const cameraBtn     = document.getElementById('camera-btn');
-const chooseFileBtn = document.getElementById('choose-file-btn');
-const cameraInput   = document.getElementById('camera-input');
-const fileInput     = document.getElementById('file-input');
+const cameraBtn       = document.getElementById('camera-btn');
+const chooseFileBtn   = document.getElementById('choose-file-btn');
+const cameraInput     = document.getElementById('camera-input');
+const fileInput       = document.getElementById('file-input');
+const fileNamePreview = document.getElementById('file-name-preview');
+const scanBtn         = document.getElementById('scan-btn');
 
 cameraBtn.addEventListener('click',     () => cameraInput.click());
 chooseFileBtn.addEventListener('click', () => fileInput.click());
 cameraInput.addEventListener('change',   handleFileSelect);
 fileInput.addEventListener('change',     handleFileSelect);
 
-// ==== APP STATE ====
+// ==== APP STATE & RENDER ====
 let entries = JSON.parse(localStorage.getItem('entries') || '[]');
 
-// ==== UTILITY FUNCTIONS ====
 function saveEntries() {
   localStorage.setItem('entries', JSON.stringify(entries));
   renderEntriesTable();
@@ -24,7 +25,6 @@ function renderEntriesTable() {
   thead.innerHTML = '';
   tbody.innerHTML = '';
 
-  // header row (hard-coded columns 1–34)
   const cols = [
     'Date','Tube #','Line','Weld','Std Chill','Emboss Chill',
     'S1','S2','S3','Avg','TPO','Covestro','Lubrizol','3010',
@@ -38,7 +38,6 @@ function renderEntriesTable() {
     thead.appendChild(th);
   });
 
-  // data rows
   entries.forEach(row => {
     const tr = document.createElement('tr');
     cols.forEach(key => {
@@ -50,33 +49,30 @@ function renderEntriesTable() {
   });
 }
 
-// ==== OCR + FORM MANAGEMENT ====
+// ==== FILE SELECT & OCR TRIGGER ====
 async function handleFileSelect(evt) {
   const file = evt.target.files[0];
   if (!file) return;
 
-  // show preview
-  const img = document.getElementById('preview');
-  img.src = URL.createObjectURL(file);
-  img.hidden = false;
-  document.getElementById('scan-btn').hidden = false;
+  // show filename instead of image
+  fileNamePreview.textContent = file.name;
+  fileNamePreview.hidden = false;
+  scanBtn.hidden = false;
+  scanBtn.disabled = false;
 
-  document.getElementById('scan-btn').onclick = async () => {
-    document.getElementById('scan-btn').disabled = true;
-    const { data: { text } } = await Tesseract.recognize(img.src, 'eng');
+  scanBtn.onclick = async () => {
+    scanBtn.disabled = true;
+    const { data: { text } } = await Tesseract.recognize(file, 'eng');
     autoFillForm(parseTextToFields(text));
     document.getElementById('data-form').hidden = false;
-    document.getElementById('scan-btn').hidden = true;
+    scanBtn.hidden = true;
   };
 }
 
-// parse your OCR’d text into the 34 fields
+// ==== PARSING & FORM FILL ====
 function parseTextToFields(text) {
   const f = {};
-  // — extract Date, Tube#, L-3-N → 3N, etc.
-  // — extract all other fields by regex/search
-  // For brevity, fill in your parsing logic here:
-  // e.g. f['Date'] = extract(/Date[:\s]+(\d+\/\d+\/\d+)/i, text);
+  // Your OCR parsing logic here...
   return f;
 }
 
@@ -93,18 +89,14 @@ document.getElementById('save-btn').onclick = () => {
   const form = document.getElementById('data-form');
   const data = {};
   new FormData(form).forEach((v, k) => data[k] = v.trim());
-  
-  // build 2 rows: Start/End
-  const base = { ...data };
-  // compute averages, trim L- prefix, prefix comments, etc.
+
   ['Start','End'].forEach(mode => {
-    const row = { ...base };
+    const row = { ...data };
     row['Comments'] = `${mode} - ${row.comments || ''}`;
-    // fill s1,s2,s3 from the proper fields
     ['s1','s2','s3'].forEach(n => {
-      row[n] = data[`${n}${mode.toLowerCase()}`];
+      row[n.toUpperCase()] = data[`${n}${mode.toLowerCase()}`];
     });
-    delete row.comments; // moved into Comments
+    delete row.comments;
     entries.push(row);
   });
 
