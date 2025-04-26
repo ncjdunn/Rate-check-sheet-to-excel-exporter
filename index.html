@@ -4,35 +4,52 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Rate Check Sheet to Excel Exporter</title>
+
+  <!-- PWA manifest -->
   <link rel="manifest" href="manifest.json"/>
+
+  <!-- Mobile styling -->
   <link rel="stylesheet" href="style.css"/>
+
+  <!-- Prevent caching -->
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="-1"/>
 </head>
 <body>
   <div class="container">
     <h1>Scan &amp; Export</h1>
+
+    <!-- Camera / File Input -->
     <div class="input-group">
       <button id="camera-btn">📷 Take Photo</button>
       <button id="choose-file-btn">📁 Choose File</button>
       <input type="file" id="camera-input" accept="image/*" capture="environment" hidden/>
       <input type="file" id="file-input" accept="image/*" hidden/>
     </div>
+
+    <!-- Filename Preview & OCR Button -->
     <div id="preview-container">
       <span id="file-name-preview" hidden></span>
       <button id="scan-btn" hidden>🔍 Scan Form</button>
     </div>
+
+    <!-- Auto-filled Form -->
     <form id="data-form" hidden>
+      <!-- Row Group 1: Header info -->
       <div class="fields">
         <label>Date: <input name="date"/></label>
         <label>Tube #: <input name="tube"/></label>
         <label>Line: <input name="line"/></label>
         <label>Type of Weld: <input name="weld"/></label>
       </div>
+
+      <!-- Row Group 2: Chill Wheels -->
       <div class="fields">
         <label>Standard Chill Wheel (1): <input name="stdChill"/></label>
         <label>Embossed Chill Wheel (1): <input name="embossChill"/></label>
       </div>
+
+      <!-- Row Group 3: Samples -->
       <div class="fields">
         <label>Sample 1 Start: <input name="s1start"/></label>
         <label>Sample 2 Start: <input name="s2start"/></label>
@@ -43,6 +60,8 @@
         <label>Sample 2 End: <input name="s2end"/></label>
         <label>Sample 3 End: <input name="s3end"/></label>
       </div>
+
+      <!-- Row Group 4: Materials & Flags -->
       <div class="fields">
         <label>TPO (1): <input name="tpo"/></label>
         <label>Covestro (1): <input name="covestro"/></label>
@@ -55,11 +74,15 @@
         <label>Remote (1): <input name="remote"/></label>
         <label>Local (1): <input name="local"/></label>
       </div>
+
+      <!-- Row Group 5: Speeds & Outputs -->
       <div class="fields">
         <label>Line Speed: <input name="lineSpeed"/></label>
         <label>Output: <input name="output"/></label>
         <label>Screw Speed: <input name="screwSpeed"/></label>
       </div>
+
+      <!-- Row Group 6: Die & Zones -->
       <div class="fields">
         <label>Die Lip: <input name="dieLip"/></label>
         <label>Zone 1: <input name="zone1"/></label>
@@ -67,33 +90,4 @@
         <label>Zone 3: <input name="zone3"/></label>
       </div>
       <div class="fields">
-        <label>Die 1: <input name="die1"/></label>
-        <label>Die 2: <input name="die2"/></label>
-        <label>Die 3: <input name="die3"/></label>
-        <label>Die 4: <input name="die4"/></label>
-      </div>
-      <div class="fields">
-        <label>% Load: <input name="pctLoad"/></label>
-        <label>Head Pressure: <input name="headPressure"/></label>
-      </div>
-      <div class="fields">
-        <label>Comments: <input name="comments"/></label>
-      </div>
-      <div class="buttons">
-        <button type="button" id="save-btn">💾 Save Entries</button>
-        <button type="button" id="export-btn">📥 Download Excel</button>
-      </div>
-    </form>
-    <h2>Saved Entries</h2>
-    <table id="entries-table"><thead><tr></tr></thead><tbody></tbody></table>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="main.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js');
-    }
-  </script>
-</body>
-</html>
+        <
