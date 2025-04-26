@@ -1,1 +1,40 @@
-/* Style placeholder */
+body {
+  font-family: sans-serif;
+  padding: 1rem;
+}
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+.input-group button {
+  margin-right: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+}
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.fields label {
+  flex: 1 1 45%;
+  display: flex;
+  flex-direction: column;
+}
+.buttons {
+  margin-top: 1rem;
+}
+.buttons button {
+  margin-right: 0.5rem;
+  padding: 0.5rem 1rem;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+th, td {
+  border: 1px solid #ccc;
+  padding: 0.5rem;
+}

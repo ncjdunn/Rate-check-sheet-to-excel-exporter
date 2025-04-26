@@ -33,13 +33,11 @@ function renderEntriesTable() {
     'Remote','Local','Screw Speed','Die Lip','Zone1','Zone2','Zone3',
     'Die1','Die2','Die3','Die4','% Load','Head Pressure','Melt Index','Comments'
   ];
-  // header
   cols.forEach(h => {
     const th = document.createElement('th');
     th.textContent = h;
     thead.appendChild(th);
   });
-  // rows
   entries.forEach(row => {
     const tr = document.createElement('tr');
     cols.forEach(key => {
@@ -61,7 +59,7 @@ async function handleFileSelect(evt) {
   fileNamePreview.hidden = false;
   scanBtn.hidden = false;
   scanBtn.disabled = false;
-  dataForm.hidden = true; // hide form until OCR is done
+  dataForm.hidden = true;
 
   scanBtn.onclick = async () => {
     console.log('🔍 Scan button clicked');
@@ -88,8 +86,6 @@ async function handleFileSelect(evt) {
 // ==== PARSING OCR TEXT INTO FORM FIELDS ====
 function parseTextToFields(text) {
   const f = {};
-
-  // Simple examples — expand these regexes to match your actual form labels:
   const dateMatch = text.match(/Date[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
   const tubeMatch = text.match(/Tube\s*#[:\s]+(\d+)/i);
   const lineMatch = text.match(/L-?(\d)-([ND])/i);
@@ -102,17 +98,14 @@ function parseTextToFields(text) {
   f.weld        = weldMatch   ? weldMatch[1]                  : '';
   f['pelletType'] = pelletMatch ? pelletMatch[1].trim()        : '';
 
-  // Set all "1" fields blank by default
   ['stdChill','embossChill','tpo','covestro','lubrizol','down3010',
    'extrOnly','doubleTape','remote','local'
   ].forEach(flag => f[flag] = '');
 
-  // Samples / speeds left blank for manual entry
   ['s1start','s2start','s3start','s1end','s2end','s3end',
    'lineSpeed','output','screwSpeed','dieLip','zone1','zone2','zone3',
    'die1','die2','die3','die4','pctLoad','headPressure','comments'
   ].forEach(field => f[field] = '');
-
   return f;
 }
 
@@ -128,27 +121,19 @@ function autoFillForm(f) {
 // ==== SAVE & EXPORT ====
 document.getElementById('save-btn').onclick = () => {
   const data = {};
-  new FormData(dataForm).forEach((v,k) => data[k] = v.trim());
+  new FormData(document.getElementById('data-form')).forEach((v,k) => data[k] = v.trim());
 
-  // build two rows (Start/End)
   ['Start','End'].forEach(mode => {
     const row = {};
-    // map form fields into final column names
     row['Date']       = data.date;
     row['Tube #']     = data.tube;
     row['Line']       = data.line;
     row['Weld']       = data.weld;
     row['Std Chill']  = data.stdChill;
     row['Emboss Chill']= data.embossChill;
-
-    // samples & average
-    const s1 = +data[`s1${mode.toLowerCase()}`] || '';
-    const s2 = +data[`s2${mode.toLowerCase()}`] || '';
-    const s3 = +data[`s3${mode.toLowerCase()}`] || '';
-    row['S1'] = s1; row['S2'] = s2; row['S3'] = s3;
-    row['Avg'] = (s1 && s2 && s3) ? ((s1 + s2 + s3)/3).toFixed(2) : '';
-
-    // flags
+    const s1 = +data[`s1${mode.toLowerCase()}`]||''; const s2 = +data[`s2${mode.toLowerCase()}`]||''; const s3 = +data[`s3${mode.toLowerCase()}`]||'';
+    row['S1']=s1; row['S2']=s2; row['S3']=s3;
+    row['Avg'] = (s1&&s2&&s3)?((s1+s2+s3)/3).toFixed(2):'';
     row['TPO']         = data.tpo;
     row['Covestro']    = data.covestro;
     row['Lubrizol']    = data.lubrizol;
@@ -171,15 +156,14 @@ document.getElementById('save-btn').onclick = () => {
     row['Die4']        = data.die4;
     row['% Load']      = data.pctLoad;
     row['Head Pressure']= data.headPressure;
-    row['Melt Index']  = '';             // blank per spec
-    row['Comments']    = `${mode} - ${data.comments||''}`;
-
+    row['Melt Index']  = '';
+    row['Comments']    = mode + ' - ' + (data.comments||'');
     entries.push(row);
   });
 
   saveEntries();
-  dataForm.reset();
-  dataForm.hidden = true;
+  document.getElementById('data-form').reset();
+  document.getElementById('data-form').hidden = true;
 };
 
 document.getElementById('export-btn').onclick = () => {
