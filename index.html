@@ -1,19 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
   <title>Rate Check Sheet to Excel Exporter</title>
 
   <!-- PWA manifest -->
-  <link rel="manifest" href="manifest.json"/>
+  <link rel="manifest" href="manifest.json" />
 
-  <!-- Mobile styling -->
-  <link rel="stylesheet" href="style.css"/>
+  <!-- Your mobile & table styling -->
+  <link rel="stylesheet" href="style.css" />
 
-  <!-- Prevent caching -->
-  <meta http-equiv="Pragma" content="no-cache"/>
-  <meta http-equiv="Expires" content="-1"/>
+  <!-- Prevent stale caching -->
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="-1" />
 </head>
 <body>
   <div class="container">
@@ -23,20 +26,18 @@
     <div class="input-group">
       <button id="camera-btn">📷 Take Photo</button>
       <button id="choose-file-btn">📁 Choose File</button>
-
-      <!-- Hidden inputs now use display:none -->
       <input
         type="file"
         id="camera-input"
         accept="image/*"
         capture="environment"
-        style="display:none;"
+        style="display: none;"
       />
       <input
         type="file"
         id="file-input"
         accept="image/*"
-        style="display:none;"
+        style="display: none;"
       />
     </div>
 
@@ -48,7 +49,8 @@
 
     <!-- Auto-filled Form -->
     <form id="data-form" hidden>
-      <!-- (all your fields here—unchanged) -->
+      <!-- your input fields here -->
+      <!-- e.g. <input name="date" placeholder="Date" /> etc. -->
       <div class="buttons">
         <button type="button" id="save-btn">💾 Save Entries</button>
         <button type="button" id="export-btn">📥 Download Excel</button>
@@ -62,14 +64,12 @@
     </table>
   </div>
 
-  <!-- OCR & Excel libraries from CDN -->
+  <!-- Tesseract.js v4 for worker-based OCR -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <!-- Your app logic -->
+  <!-- main.js must come after Tesseract -->
   <script src="main.js"></script>
 
-  <!-- Register service worker -->
+  <!-- Register service worker for PWA caching -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js');
