@@ -1,291 +1,170 @@
-// ==== CAMERA & FILE-INPUT WIRING ====
-const cameraBtn       = document.getElementById('camera-btn');
-const chooseFileBtn   = document.getElementById('choose-file-btn');
-const cameraInput     = document.getElementById('camera-input');
-const fileInput       = document.getElementById('file-input');
-const fileNamePreview = document.getElementById('file-name-preview');
-const scanBtn         = document.getElementById('scan-btn');
-const dataForm        = document.getElementById('data-form');
+// main.js
 
-cameraBtn.addEventListener('click',     () => cameraInput.click());
-chooseFileBtn.addEventListener('click', () => fileInput.click());
-cameraInput.addEventListener('change',   handleFileSelect);
-fileInput.addEventListener('change',     handleFileSelect);
+// —–––––––––––––––
+// Element refs
+// —–––––––––––––––
+const cameraBtn   = document.getElementById('camera-btn');
+const fileBtn     = document.getElementById('choose-file-btn');
+const scanBtn     = document.getElementById('scan-btn');
+const camInput    = document.getElementById('camera-input');
+const fileInput   = document.getElementById('file-input');
+const previewName = document.getElementById('file-name-preview');
+const formEl      = document.getElementById('data-form');
+const saveBtn     = document.getElementById('save-btn');
+const exportBtn   = document.getElementById('export-btn');
+const tableHead   = document.querySelector('#entries-table thead tr');
+const tableBody   = document.querySelector('#entries-table tbody');
 
-// ==== APP STATE & RENDER ====
-let entries = JSON.parse(localStorage.getItem('entries') || '[]');
+// —–––––––––––––––
+// State
+// —–––––––––––––––
+let selectedFile = null;
+let entries = [];
 
-function saveEntries() {
-  localStorage.setItem('entries', JSON.stringify(entries));
-  renderEntriesTable();
+// —–––––––––––––––
+// Helpers
+// —–––––––––––––––
+function showFileName(name) {
+  previewName.textContent = name;
+  previewName.hidden = false;
 }
 
-function renderEntriesTable() {
-  const thead = document.querySelector('#entries-table thead tr');
-  const tbody = document.querySelector('#entries-table tbody');
-  thead.innerHTML = '';
-  tbody.innerHTML = '';
+function enableScan() {
+  scanBtn.disabled = false;
+  scanBtn.hidden = false;
+}
 
-  const cols = [
-    'Date','Tube #','Line','Weld','Std Chill','Emboss Chill',
-    'S1','S2','S3','Avg','TPO','Covestro','Lubrizol','3010 Down',
-    'Pellet Type','Extr Only','Double Tape','Line Speed','Output',
-    'Remote','Local','Screw Speed','Die Lip','Zone1','Zone2','Zone3',
-    'Die1','Die2','Die3','Die4','% Load','Head Pressure','Melt Index','Comments'
-  ];
+function showForm() {
+  formEl.hidden = false;
+}
 
-  // header
-  cols.forEach(h => {
+function resetFormFields() {
+  formEl.querySelectorAll('input, textarea').forEach(el => el.value = '');
+}
+
+// simple regex-based parser for each field
+function parseOcrText(text) {
+  const out = {};
+
+  function match(pattern, group=1) {
+    const m = text.match(pattern);
+    return m ? m[group].trim() : '';
+  }
+
+  out.date         = match(/Date[:\s]+([A-Za-z0-9\/\-\s]+)/i);
+  out.tube         = match(/Tube\s*#[:\s]*(\S+)/i);
+  out.line         = match(/Line[:\s]*(\S+)/i);
+  out.weld         = match(/Weld[:\s]*(\S+)/i);
+  out.stdChill     = match(/Standard\s*Chill[:\s]*(\S+)/i);
+  out.embossChill  = match(/Embossed?\s*Chill[:\s]*(\S+)/i);
+  out.s1start      = match(/S1\s*Start[:\s]*(\S+)/i);
+  out.s2start      = match(/S2\s*Start[:\s]*(\S+)/i);
+  out.s3start      = match(/S3\s*Start[:\s]*(\S+)/i);
+  out.lineSpeed    = match(/Line\s*Speed[:\s]*(\S+)/i);
+  out.output       = match(/Output[:\s]*(\S+)/i);
+  out.screwSpeed   = match(/Screw\s*Speed[:\s]*(\S+)/i);
+  out.dieLip       = match(/Die\s*Lip[:\s]*(\S+)/i);
+  out.pctLoad      = match(/Percent\s*Load[:\s]*(\S+)/i);
+  out.headPressure = match(/Head\s*Pressure[:\s]*(\S+)/i);
+  // anything after "Comments" to end of text
+  const comMatch = text.match(/Comments?[:\s]*([\s\S]*)$/i);
+  out.comments     = comMatch ? comMatch[1].trim() : '';
+
+  return out;
+}
+
+function populateForm(data) {
+  for (let key in data) {
+    const field = formEl.querySelector(`[name=${key}]`);
+    if (field) field.value = data[key];
+  }
+}
+
+// rebuilds the table header based on form fields
+function refreshTable() {
+  tableHead.innerHTML = '';
+  tableBody.innerHTML = '';
+  if (!entries.length) return;
+
+  // header row
+  Object.keys(entries[0]).forEach(k => {
     const th = document.createElement('th');
-    th.textContent = h;
-    thead.appendChild(th);
+    th.textContent = k;
+    tableHead.appendChild(th);
   });
 
   // rows
-  entries.forEach(row => {
+  for (let row of entries) {
     const tr = document.createElement('tr');
-    cols.forEach(key => {
+    Object.values(row).forEach(val => {
       const td = document.createElement('td');
-      td.textContent = row[key] || '';
+      td.textContent = val;
       tr.appendChild(td);
     });
-    tbody.appendChild(tr);
+    tableBody.appendChild(tr);
+  }
+}
+
+// —–––––––––––––––
+// OCR + scan flow
+// —–––––––––––––––
+scanBtn.addEventListener('click', async () => {
+  scanBtn.disabled = true;
+  console.log(`⏳ Starting OCR on a ${camInput.width}×${camInput.height}px image…`);
+  const { data: { text } } = await Tesseract.recognize(
+    selectedFile,
+    'eng',
+    {
+      logger: m => console.log('Tesseract:', m)
+    }
+  );
+  console.log('✅ OCR complete. Text:', text);
+  
+  // parse & populate
+  const parsed = parseOcrText(text);
+  populateForm(parsed);
+  showForm();
+});
+
+// —–––––––––––––––
+// file/camera pick
+// —–––––––––––––––
+cameraBtn.addEventListener('click', () => camInput.click());
+fileBtn.addEventListener('click',   () => fileInput.click());
+
+camInput.addEventListener('change', e => {
+  if (!e.target.files.length) return;
+  selectedFile = e.target.files[0];
+  showFileName(selectedFile.name);
+  enableScan();
+});
+
+fileInput.addEventListener('change', e => {
+  if (!e.target.files.length) return;
+  selectedFile = e.target.files[0];
+  showFileName(selectedFile.name);
+  enableScan();
+});
+
+// —–––––––––––––––
+// saving & exporting
+// —–––––––––––––––
+saveBtn.addEventListener('click', () => {
+  const formData = {};
+  formEl.querySelectorAll('input,textarea').forEach(el => {
+    formData[el.name] = el.value;
   });
-}
+  entries.push(formData);
+  refreshTable();
+  resetFormFields();
+  formEl.hidden = true;
+  previewName.hidden = true;
+  scanBtn.hidden = true;
+});
 
-// ==== FILE SELECT & OCR TRIGGER ====
-async function handleFileSelect(evt) {
-  const file = evt.target.files[0];
-  if (!file) return;
-
-  fileNamePreview.textContent = file.name;
-  fileNamePreview.hidden = false;
-  scanBtn.hidden = false;
-  scanBtn.disabled = false;
-  dataForm.hidden = true;
-
-  scanBtn.onclick = () => {
-    scanBtn.disabled = true;
-
-    // 1) Load file into an image object
-    const img = new Image();
-    img.onload = async () => {
-      // 2) Clamp size between 300px and 1024px wide
-      const MIN_WIDTH = 300;
-      const MAX_WIDTH = 1024;
-      let source = img;
-      let scale = 1;
-      if (img.naturalWidth < MIN_WIDTH) {
-        scale = MIN_WIDTH / img.naturalWidth;
-      } else if (img.naturalWidth > MAX_WIDTH) {
-        scale = MAX_WIDTH / img.naturalWidth;
-      }
-      if (scale !== 1) {
-        const canvas = document.createElement('canvas');
-        canvas.width  = img.naturalWidth  * scale;
-        canvas.height = img.naturalHeight * scale;
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        source = canvas;
-      }
-
-      // 3) Run OCR on the resized source with a worker
-      try {
-        console.log(`⏳ Starting OCR on a ${source.width}×${source.height}px image…`);
-        const worker = Tesseract.createWorker({
-          logger: m => console.log('Tesseract:', m)
-        });
-        await worker.load();
-        await worker.loadLanguage('eng');
-        await worker.initialize('eng');
-
-        console.log('▶️ Actually starting recognition…');
-        const { data: { text } } = await worker.recognize(source);
-        console.log('✅ OCR complete. Text:', text);
-
-        await worker.terminate();
-
-        const fields = parseTextToFields(text);
-        autoFillForm(fields);
-        dataForm.hidden = false;
-        scanBtn.hidden = true;
-      } catch (err) {
-        console.error('❌ OCR failed:', err);
-        alert('OCR failed: ' + err.message);
-        scanBtn.disabled = false;
-      }
-    };
-
-    img.onerror = () => {
-      alert('Could not load image for OCR.');
-      scanBtn.disabled = false;
-    };
-
-    img.src = URL.createObjectURL(file);
-  };
-}
-
-// ==== PARSING OCR TEXT INTO FORM FIELDS ====
-function parseTextToFields(text) {
-  const f = {};
-  [
-    'date','tube','line','weld','pelletType',
-    'stdChill','embossChill','tpo','covestro','lubrizol','down3010',
-    'extrOnly','doubleTape','remote','local',
-    's1start','s2start','s3start','s1end','s2end','s3end',
-    'lineSpeed','output','screwSpeed','dieLip',
-    'zone1','zone2','zone3','die1','die2','die3','die4',
-    'pctLoad','headPressure','comments'
-  ].forEach(k => f[k] = '');
-
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-  for (let line of lines) {
-    if (/Production\s+Line/i.test(line)) {
-      const m = line.match(/L-?(\d)[-–]?([ND])/i);
-      if (m) f.line = m[1] + m[2];
-    }
-    if (/^Date[:\s]/i.test(line)) {
-      const m = line.match(/Date[:\s]*([\d\/]+)/i);
-      if (m) f.date = m[1];
-    }
-    if (/^Tube\s*#/i.test(line)) {
-      const m = line.match(/Tube\s*#[:\s]*(\d+)/i);
-      if (m) f.tube = m[1];
-    }
-    if (/Seam\s*Type/i.test(line)) {
-      const m = line.match(/Seam\s*Type[:\s]*(\w+)/i);
-      if (m) f.weld = m[1];
-    }
-    if (/Polymer\s+Pellet\s+Type/i.test(line)) {
-      const m = line.match(/Polymer\s+Pellet\s+Type[:\s]*(.+)/i);
-      if (m) f.pelletType = m[1].trim();
-    }
-    if (/Percent\s+Load/i.test(line)) {
-      const m = line.match(/Percent\s+Load[:\s]*([\d\.]+)/i);
-      if (m) f.pctLoad = m[1];
-    }
-    if (/Head\s+Pressure/i.test(line)) {
-      const m = line.match(/Head\s+Pressure[:\s]*([\d]+)/i);
-      if (m) f.headPressure = m[1];
-    }
-    if (/Extruder\s+Output\s+Setting/i.test(line)) {
-      const m = line.match(/Extruder\s+Output\s+Setting[:\s]*(\d+)/i);
-      if (m) f.output = m[1];
-    }
-    if (/Screw\s+Speed/i.test(line)) {
-      const m = line.match(/Screw\s+Speed[:\s]*(\d+)/i);
-      if (m) f.screwSpeed = m[1];
-    }
-    if (/Type\s+of\s+Chill\s+Roller/i.test(line)) {
-      if (/Standard/i.test(line)) f.stdChill = '1';
-      if (/Embossed/i.test(line)) f.embossChill = '1';
-    }
-    if (/Line\s+Speed/i.test(line)) {
-      const m = line.match(/Line\s+Speed[:\s]*(\d+)/i);
-      if (m) f.lineSpeed = m[1];
-    }
-    if (/Grams\s+per\s+Minute/i.test(line)) {
-      let nums = line.match(/([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)/);
-      if (!nums) {
-        const idx = lines.indexOf(line);
-        nums = lines[idx+1]?.match(/([\d\.]+)\s+([\d\.]+)\s+([\d\.]+)/);
-      }
-      if (nums) {
-        f.s1start = nums[1];
-        f.s2start = nums[2];
-        f.s3start = nums[3];
-      }
-    }
-  }
-
-  // fallbacks
-  if (!f.date) {
-    const m = text.match(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/);
-    if (m) f.date = m[0];
-  }
-  if (!f.tube) {
-    const m = text.match(/\b\d{4,}\b/);
-    if (m) f.tube = m[0];
-  }
-
-  return f;
-}
-
-// ==== AUTO-FILL FORM ====
-function autoFillForm(f) {
-  const form = document.getElementById('data-form');
-  Object.entries(f).forEach(([key, val]) => {
-    const inp = form.querySelector(`[name="${key}"]`);
-    if (inp) inp.value = val;
-  });
-}
-
-// ==== SAVE & EXPORT ====
-document.getElementById('save-btn').onclick = () => {
-  const data = {};
-  new FormData(dataForm).forEach((v, k) => data[k] = v.trim());
-
-  ['Start','End'].forEach(mode => {
-    const row = {};
-    row['Date']         = data.date;
-    row['Tube #']       = data.tube;
-    row['Line']         = data.line;
-    row['Weld']         = data.weld;
-    row['Std Chill']    = data.stdChill;
-    row['Emboss Chill'] = data.embossChill;
-
-    const s1 = +data[`s1${mode.toLowerCase()}`] || '';
-    const s2 = +data[`s2${mode.toLowerCase()}`] || '';
-    const s3 = +data[`s3${mode.toLowerCase()}`] || '';
-    row['S1']  = s1;
-    row['S2']  = s2;
-    row['S3']  = s3;
-    row['Avg'] = (s1 && s2 && s3) ? ((s1 + s2 + s3) / 3).toFixed(2) : '';
-
-    [ ['tpo','TPO'], ['covestro','Covestro'], ['lubrizol','Lubrizol'],
-      ['down3010','3010 Down'], ['pelletType','Pellet Type'],
-      ['extrOnly','Extr Only'], ['doubleTape','Double Tape'],
-      ['remote','Remote'], ['local','Local']
-    ].forEach(([fKey, col]) => {
-      row[col] = data[fKey] || '';
-    });
-
-    [ ['lineSpeed','Line Speed'], ['output','Output'],
-      ['screwSpeed','Screw Speed'], ['dieLip','Die Lip'],
-      ['zone1','Zone1'], ['zone2','Zone2'], ['zone3','Zone3'],
-      ['die1','Die1'], ['die2','Die2'], ['die3','Die3'], ['die4','Die4'],
-      ['pctLoad','% Load'], ['headPressure','Head Pressure']
-    ].forEach(([fKey, col]) => {
-      row[col] = data[fKey] || '';
-    });
-
-    row['Melt Index'] = '';
-    row['Comments']   = `${mode} - ${data.comments || ''}`;
-
-    entries.push(row);
-  });
-
-  saveEntries();
-  dataForm.reset();
-  dataForm.hidden = true;
-};
-
-document.getElementById('export-btn').onclick = () => {
-  if (!entries.length) {
-    alert('No entries to export!');
-    return;
-  }
-  const header = [
-    'Date','Tube #','Line','Weld','Std Chill','Emboss Chill',
-    'S1','S2','S3','Avg','TPO','Covestro','Lubrizol','3010 Down',
-    'Pellet Type','Extr Only','Double Tape','Line Speed','Output',
-    'Remote','Local','Screw Speed','Die Lip','Zone1','Zone2','Zone3',
-    'Die1','Die2','Die3','Die4','% Load','Head Pressure','Melt Index','Comments'
-  ];
+exportBtn.addEventListener('click', () => {
+  const ws = XLSX.utils.json_to_sheet(entries);
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(entries, { header, origin: 'A1' });
-  XLSX.utils.book_append_sheet(wb, ws, 'Scans');
-  XLSX.writeFile(wb, 'scan-log.xlsx');
-};
-
-// ==== INITIALIZE ====
-renderEntriesTable();
+  XLSX.utils.book_append_sheet(wb, ws, 'Log');
+  XLSX.writeFile(wb, 'ocr-log.xlsx');
+});
