@@ -1,3 +1,16 @@
+// ==== TESSERACT.JS WORKER SETUP ====
+const worker = Tesseract.createWorker({
+  logger: m => console.log('Tesseract:', m) // optional progress logging
+});
+(async () => {
+  await worker.load();
+  await worker.loadLanguage('eng');
+  await worker.initialize('eng');
+  // choose a pageseg mode that fits your layout
+  await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SINGLE_COLUMN });
+  console.log('✅ Tesseract worker ready');
+})();
+
 // ==== CAMERA & FILE-INPUT WIRING ====
 const cameraBtn       = document.getElementById('camera-btn');
 const chooseFileBtn   = document.getElementById('choose-file-btn');
@@ -64,47 +77,46 @@ async function handleFileSelect(evt) {
   scanBtn.disabled = false;
   dataForm.hidden = true;
 
-  scanBtn.onclick = () => {
+  scanBtn.onclick = async () => {
     scanBtn.disabled = true;
+    try {
+      // load into an Image
+      const img = new Image();
+      const objectURL = URL.createObjectURL(file);
+      const imgLoad = new Promise((res, rej) => {
+        img.onload  = () => res();
+        img.onerror = () => rej(new Error('Could not load image for OCR.'));
+      });
+      img.src = objectURL;
+      await imgLoad;
 
-    // 1) Load file into an image object
-    const img = new Image();
-    img.onload = async () => {
-      // 2) Upscale if too small
-      const MIN_WIDTH = 300;
-      let source = img;
-      if (img.naturalWidth < MIN_WIDTH) {
-        const scale = MIN_WIDTH / img.naturalWidth;
-        const canvas = document.createElement('canvas');
-        canvas.width  = img.naturalWidth * scale;
-        canvas.height = img.naturalHeight * scale;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        source = canvas;
+      // upscale to at least 1024px width
+      const MIN_WIDTH = 1024;
+      const scale = Math.max(1, MIN_WIDTH / img.naturalWidth);
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.naturalWidth * scale;
+      canvas.height = img.naturalHeight * scale;
+      const ctx = canvas.getContext('2d');
+
+      // apply simple grayscale+contrast filter if supported
+      if ('filter' in ctx) {
+        ctx.filter = 'grayscale(100%) contrast(150%)';
       }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // 3) Run OCR on the properly sized source
-      try {
-        console.log('⏳ Starting OCR on a', source.width, '×', source.height, 'px image…');
-        const { data: { text } } = await Tesseract.recognize(source, 'eng');
-        console.log('✅ OCR complete. Text:', text);
-        const fields = parseTextToFields(text);
-        autoFillForm(fields);
-        dataForm.hidden = false;
-        scanBtn.hidden = true;
-      } catch (err) {
-        console.error('❌ OCR failed:', err);
-        alert('OCR failed: ' + err.message);
-        scanBtn.disabled = false;
-      }
-    };
+      console.log(`⏳ Starting OCR on ${canvas.width}×${canvas.height} px…`);
+      const { data: { text } } = await worker.recognize(canvas);
+      console.log('✅ OCR complete. Text:', text);
 
-    img.onerror = () => {
-      alert('Could not load image for OCR.');
+      const fields = parseTextToFields(text);
+      autoFillForm(fields);
+      dataForm.hidden = false;
+      scanBtn.hidden = true;
+    } catch (err) {
+      console.error('❌ OCR failed:', err);
+      alert('OCR failed: ' + err.message);
       scanBtn.disabled = false;
-    };
-
-    img.src = URL.createObjectURL(file);
+    }
   };
 }
 
@@ -160,8 +172,8 @@ function parseTextToFields(text) {
       if (m) f.screwSpeed = m[1];
     }
     if (/Type\s+of\s+Chill\s+Roller/i.test(line)) {
-      if (/Standard/i.test(line)) f.stdChill = '1';
-      if (/Embossed/i.test(line)) f.embossChill = '1';
+      if (/Standard/i.test(line))  f.stdChill    = '1';
+      if (/Embossed/i.test(line))  f.embossChill = '1';
     }
     if (/Line\s+Speed/i.test(line)) {
       const m = line.match(/Line\s+Speed[:\s]*(\d+)/i);
@@ -190,7 +202,6 @@ function parseTextToFields(text) {
     const m = text.match(/\b\d{4,}\b/);
     if (m) f.tube = m[0];
   }
-
   return f;
 }
 
@@ -206,7 +217,7 @@ function autoFillForm(f) {
 // ==== SAVE & EXPORT ====
 document.getElementById('save-btn').onclick = () => {
   const data = {};
-  new FormData(dataForm).forEach((v, k) => data[k] = v.trim());
+  new FormData(dataForm).forEach((v,k)=> data[k] = v.trim());
 
   ['Start','End'].forEach(mode => {
     const row = {};
@@ -217,33 +228,27 @@ document.getElementById('save-btn').onclick = () => {
     row['Std Chill']    = data.stdChill;
     row['Emboss Chill'] = data.embossChill;
 
-    const s1 = +data[`s1${mode.toLowerCase()}`] || '';
-    const s2 = +data[`s2${mode.toLowerCase()}`] || '';
-    const s3 = +data[`s3${mode.toLowerCase()}`] || '';
-    row['S1']  = s1;
-    row['S2']  = s2;
-    row['S3']  = s3;
-    row['Avg'] = (s1 && s2 && s3) ? ((s1 + s2 + s3) / 3).toFixed(2) : '';
+    const s1 = +data[`s1${mode.toLowerCase()}`]||'';
+    const s2 = +data[`s2${mode.toLowerCase()}`]||'';
+    const s3 = +data[`s3${mode.toLowerCase()}`]||'';
+    row['S1']=s1; row['S2']=s2; row['S3']=s3;
+    row['Avg']= (s1&&s2&&s3) ? ((s1+s2+s3)/3).toFixed(2):'';
 
     [ ['tpo','TPO'], ['covestro','Covestro'], ['lubrizol','Lubrizol'],
       ['down3010','3010 Down'], ['pelletType','Pellet Type'],
       ['extrOnly','Extr Only'], ['doubleTape','Double Tape'],
       ['remote','Remote'], ['local','Local']
-    ].forEach(([fKey, col]) => {
-      row[col] = data[fKey] || '';
-    });
+    ].forEach(([k,c])=>row[c]=data[k]||'');
 
     [ ['lineSpeed','Line Speed'], ['output','Output'],
       ['screwSpeed','Screw Speed'], ['dieLip','Die Lip'],
       ['zone1','Zone1'], ['zone2','Zone2'], ['zone3','Zone3'],
       ['die1','Die1'], ['die2','Die2'], ['die3','Die3'], ['die4','Die4'],
       ['pctLoad','% Load'], ['headPressure','Head Pressure']
-    ].forEach(([fKey, col]) => {
-      row[col] = data[fKey] || '';
-    });
+    ].forEach(([k,c])=>row[c]=data[k]||'');
 
-    row['Melt Index'] = '';
-    row['Comments']   = `${mode} - ${data.comments || ''}`;
+    row['Melt Index']='';
+    row['Comments']=`${mode} - ${data.comments||''}`;
 
     entries.push(row);
   });
@@ -255,8 +260,7 @@ document.getElementById('save-btn').onclick = () => {
 
 document.getElementById('export-btn').onclick = () => {
   if (!entries.length) {
-    alert('No entries to export!');
-    return;
+    return alert('No entries to export!');
   }
   const header = [
     'Date','Tube #','Line','Weld','Std Chill','Emboss Chill',
