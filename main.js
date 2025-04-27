@@ -1,16 +1,3 @@
-// ==== TESSERACT.JS WORKER SETUP ====
-const worker = Tesseract.createWorker({
-  logger: m => console.log('Tesseract:', m) // optional progress logging
-});
-(async () => {
-  await worker.load();
-  await worker.loadLanguage('eng');
-  await worker.initialize('eng');
-  // choose a pageseg mode that fits your layout
-  await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SINGLE_COLUMN });
-  console.log('✅ Tesseract worker ready');
-})();
-
 // ==== CAMERA & FILE-INPUT WIRING ====
 const cameraBtn       = document.getElementById('camera-btn');
 const chooseFileBtn   = document.getElementById('choose-file-btn');
@@ -27,6 +14,13 @@ fileInput.addEventListener('change',     handleFileSelect);
 
 // ==== APP STATE & RENDER ====
 let entries = JSON.parse(localStorage.getItem('entries') || '[]');
+const cols = [
+  'Date','Tube #','Line','Weld','Std Chill','Emboss Chill',
+  'S1','S2','S3','Avg','TPO','Covestro','Lubrizol','3010 Down',
+  'Pellet Type','Extr Only','Double Tape','Line Speed','Output',
+  'Remote','Local','Screw Speed','Die Lip','Zone1','Zone2','Zone3',
+  'Die1','Die2','Die3','Die4','% Load','Head Pressure','Melt Index','Comments'
+];
 
 function saveEntries() {
   localStorage.setItem('entries', JSON.stringify(entries));
@@ -38,23 +32,11 @@ function renderEntriesTable() {
   const tbody = document.querySelector('#entries-table tbody');
   thead.innerHTML = '';
   tbody.innerHTML = '';
-
-  const cols = [
-    'Date','Tube #','Line','Weld','Std Chill','Emboss Chill',
-    'S1','S2','S3','Avg','TPO','Covestro','Lubrizol','3010 Down',
-    'Pellet Type','Extr Only','Double Tape','Line Speed','Output',
-    'Remote','Local','Screw Speed','Die Lip','Zone1','Zone2','Zone3',
-    'Die1','Die2','Die3','Die4','% Load','Head Pressure','Melt Index','Comments'
-  ];
-
-  // header
   cols.forEach(h => {
     const th = document.createElement('th');
     th.textContent = h;
     thead.appendChild(th);
   });
-
-  // rows
   entries.forEach(row => {
     const tr = document.createElement('tr');
     cols.forEach(key => {
@@ -80,34 +62,32 @@ async function handleFileSelect(evt) {
   scanBtn.onclick = async () => {
     scanBtn.disabled = true;
     try {
-      // load into an Image
+      // Load image
       const img = new Image();
-      const objectURL = URL.createObjectURL(file);
-      const imgLoad = new Promise((res, rej) => {
-        img.onload  = () => res();
-        img.onerror = () => rej(new Error('Could not load image for OCR.'));
+      img.src = URL.createObjectURL(file);
+      await new Promise((res, rej) => {
+        img.onload  = res;
+        img.onerror = rej;
       });
-      img.src = objectURL;
-      await imgLoad;
 
-      // upscale to at least 1024px width
+      // Upscale to ≥1024px width + apply filter
       const MIN_WIDTH = 1024;
       const scale = Math.max(1, MIN_WIDTH / img.naturalWidth);
       const canvas = document.createElement('canvas');
       canvas.width  = img.naturalWidth * scale;
       canvas.height = img.naturalHeight * scale;
       const ctx = canvas.getContext('2d');
-
-      // apply simple grayscale+contrast filter if supported
-      if ('filter' in ctx) {
-        ctx.filter = 'grayscale(100%) contrast(150%)';
-      }
+      if ('filter' in ctx) ctx.filter = 'grayscale(100%) contrast(150%)';
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       console.log(`⏳ Starting OCR on ${canvas.width}×${canvas.height} px…`);
-      const { data: { text } } = await worker.recognize(canvas);
-      console.log('✅ OCR complete. Text:', text);
+      const { data: { text } } = await Tesseract.recognize(
+        canvas,
+        'eng',
+        { logger: m => console.log('Tesseract:', m) }
+      ); // Tesseract.recognize auto-loads core & .traineddata from CDN by default :contentReference[oaicite:0]{index=0}
 
+      console.log('✅ OCR complete. Text:', text);
       const fields = parseTextToFields(text);
       autoFillForm(fields);
       dataForm.hidden = false;
@@ -133,7 +113,7 @@ function parseTextToFields(text) {
     'pctLoad','headPressure','comments'
   ].forEach(k => f[k] = '');
 
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
   for (let line of lines) {
     if (/Production\s+Line/i.test(line)) {
       const m = line.match(/L-?(\d)[-–]?([ND])/i);
@@ -172,8 +152,8 @@ function parseTextToFields(text) {
       if (m) f.screwSpeed = m[1];
     }
     if (/Type\s+of\s+Chill\s+Roller/i.test(line)) {
-      if (/Standard/i.test(line))  f.stdChill    = '1';
-      if (/Embossed/i.test(line))  f.embossChill = '1';
+      if (/Standard/i.test(line)) f.stdChill = '1';
+      if (/Embossed/i.test(line)) f.embossChill = '1';
     }
     if (/Line\s+Speed/i.test(line)) {
       const m = line.match(/Line\s+Speed[:\s]*(\d+)/i);
@@ -227,29 +207,24 @@ document.getElementById('save-btn').onclick = () => {
     row['Weld']         = data.weld;
     row['Std Chill']    = data.stdChill;
     row['Emboss Chill'] = data.embossChill;
-
     const s1 = +data[`s1${mode.toLowerCase()}`]||'';
     const s2 = +data[`s2${mode.toLowerCase()}`]||'';
     const s3 = +data[`s3${mode.toLowerCase()}`]||'';
     row['S1']=s1; row['S2']=s2; row['S3']=s3;
-    row['Avg']= (s1&&s2&&s3) ? ((s1+s2+s3)/3).toFixed(2):'';
-
-    [ ['tpo','TPO'], ['covestro','Covestro'], ['lubrizol','Lubrizol'],
-      ['down3010','3010 Down'], ['pelletType','Pellet Type'],
-      ['extrOnly','Extr Only'], ['doubleTape','Double Tape'],
-      ['remote','Remote'], ['local','Local']
+    row['Avg']= (s1&&s2&&s3)?((s1+s2+s3)/3).toFixed(2):'';
+    [['tpo','TPO'],['covestro','Covestro'],['lubrizol','Lubrizol'],
+     ['down3010','3010 Down'],['pelletType','Pellet Type'],
+     ['extrOnly','Extr Only'],['doubleTape','Double Tape'],
+     ['remote','Remote'],['local','Local']
     ].forEach(([k,c])=>row[c]=data[k]||'');
-
-    [ ['lineSpeed','Line Speed'], ['output','Output'],
-      ['screwSpeed','Screw Speed'], ['dieLip','Die Lip'],
-      ['zone1','Zone1'], ['zone2','Zone2'], ['zone3','Zone3'],
-      ['die1','Die1'], ['die2','Die2'], ['die3','Die3'], ['die4','Die4'],
-      ['pctLoad','% Load'], ['headPressure','Head Pressure']
+    [['lineSpeed','Line Speed'],['output','Output'],
+     ['screwSpeed','Screw Speed'],['dieLip','Die Lip'],
+     ['zone1','Zone1'],['zone2','Zone2'],['zone3','Zone3'],
+     ['die1','Die1'],['die2','Die2'],['die3','Die3'],['die4','Die4'],
+     ['pctLoad','% Load'],['headPressure','Head Pressure']
     ].forEach(([k,c])=>row[c]=data[k]||'');
-
     row['Melt Index']='';
     row['Comments']=`${mode} - ${data.comments||''}`;
-
     entries.push(row);
   });
 
@@ -259,18 +234,9 @@ document.getElementById('save-btn').onclick = () => {
 };
 
 document.getElementById('export-btn').onclick = () => {
-  if (!entries.length) {
-    return alert('No entries to export!');
-  }
-  const header = [
-    'Date','Tube #','Line','Weld','Std Chill','Emboss Chill',
-    'S1','S2','S3','Avg','TPO','Covestro','Lubrizol','3010 Down',
-    'Pellet Type','Extr Only','Double Tape','Line Speed','Output',
-    'Remote','Local','Screw Speed','Die Lip','Zone1','Zone2','Zone3',
-    'Die1','Die2','Die3','Die4','% Load','Head Pressure','Melt Index','Comments'
-  ];
+  if (!entries.length) return alert('No entries to export!');
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(entries, { header, origin: 'A1' });
+  const ws = XLSX.utils.json_to_sheet(entries, { header: cols, origin: 'A1' });
   XLSX.utils.book_append_sheet(wb, ws, 'Scans');
   XLSX.writeFile(wb, 'scan-log.xlsx');
 };
