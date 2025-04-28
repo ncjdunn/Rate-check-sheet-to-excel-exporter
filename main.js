@@ -1,24 +1,26 @@
-import { createWorker } from 'https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.esm.js';
-
+// Wrap everything in an IIFE
 (async () => {
-  const worker = await createWorker({
-    workerPath: 'https://unpkg.com/tesseract.js@2.1.5/dist/worker.min.js',
-    corePath:   'https://unpkg.com/tesseract.js-core@2.1.0/tesseract-core.wasm.js',
-    logger: m => console.log('Tesseract:', m),
+  // Create worker from global Tesseract
+  const { createWorker } = Tesseract;
+
+  const worker = createWorker({
+    logger: m => console.log('Tesseract:', m)
   });
+  await worker.load();
+  await worker.loadLanguage('eng');
+  await worker.initialize('eng');
 
-  // DOM references
-  const cameraBtn       = document.getElementById('camera-btn');
-  const chooseFileBtn   = document.getElementById('choose-file-btn');
-  const cameraInput     = document.getElementById('camera-input');
-  const fileInput       = document.getElementById('file-input');
-  const scanBtn         = document.getElementById('scan-btn');
+  // DOM elements
+  const cameraBtn = document.getElementById('camera-btn');
+  const chooseFileBtn = document.getElementById('choose-file-btn');
+  const cameraInput = document.getElementById('camera-input');
+  const fileInput = document.getElementById('file-input');
+  const scanBtn = document.getElementById('scan-btn');
   const fileNamePreview = document.getElementById('file-name-preview');
-  const dataForm        = document.getElementById('data-form');
-  const entriesTable    = document.getElementById('entries-table');
+  const dataForm = document.getElementById('data-form');
+  const entriesTable = document.getElementById('entries-table');
 
-  // Enable file selection flows
-  cameraBtn.addEventListener('click',   () => cameraInput.click());
+  cameraBtn.addEventListener('click', () => cameraInput.click());
   chooseFileBtn.addEventListener('click', () => fileInput.click());
 
   let selectedFile;
@@ -30,14 +32,16 @@ import { createWorker } from 'https://unpkg.com/tesseract.js@2.1.5/dist/tesserac
     scanBtn.disabled = false;
   }
 
-  cameraInput.addEventListener('change', e => e.target.files[0] && handleFile(e.target.files[0]));
-  fileInput.addEventListener('change',   e => e.target.files[0] && handleFile(e.target.files[0]));
+  cameraInput.addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+  fileInput.addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
 
-  // OCR & log
   scanBtn.addEventListener('click', async () => {
     scanBtn.disabled = true;
-    scanBtn.textContent = '⏳ Scanning…';
-
+    scanBtn.textContent = '⏳ Scanning...';
     const img = new Image();
     img.src = URL.createObjectURL(selectedFile);
     img.onload = async () => {
@@ -47,13 +51,12 @@ import { createWorker } from 'https://unpkg.com/tesseract.js@2.1.5/dist/tesserac
       scanBtn.textContent = '🔍 Scan & OCR';
       scanBtn.disabled = false;
     };
-
     img.onerror = () => {
       console.error('Image load failed');
-      scanBtn.textContent = '🔍 Scan & OCR';
       scanBtn.disabled = false;
+      scanBtn.textContent = '🔍 Scan & OCR';
     };
   });
 
-  // TODO: Save entry and export logic here (unchanged)
+  // Your save and export logic here...
 })();
