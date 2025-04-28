@@ -1,12 +1,10 @@
-// main.js
-import { createWorker } from 'https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.esm.js';
+import { createWorker } from 'https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.esm.js';
 
 (async () => {
-  // Initialize Tesseract worker with explicit CDN paths
   const worker = await createWorker({
-    workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/worker.min.js',
-    corePath:   'https://cdn.jsdelivr.net/npm/tesseract.js-core@2.1.0/tesseract-core.wasm.js',
-    logger: m => console.log('Tesseract:', m)
+    workerPath: 'https://unpkg.com/tesseract.js@2.1.5/dist/worker.min.js',
+    corePath:   'https://unpkg.com/tesseract.js-core@2.1.0/tesseract-core.wasm.js',
+    logger: m => console.log('Tesseract:', m),
   });
 
   // DOM references
@@ -19,8 +17,8 @@ import { createWorker } from 'https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/di
   const dataForm        = document.getElementById('data-form');
   const entriesTable    = document.getElementById('entries-table');
 
-  // Trigger file pickers
-  cameraBtn.addEventListener('click', () => cameraInput.click());
+  // Enable file selection flows
+  cameraBtn.addEventListener('click',   () => cameraInput.click());
   chooseFileBtn.addEventListener('click', () => fileInput.click());
 
   let selectedFile;
@@ -32,28 +30,24 @@ import { createWorker } from 'https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/di
     scanBtn.disabled = false;
   }
 
-  cameraInput.addEventListener('change', e => {
-    if (e.target.files[0]) handleFile(e.target.files[0]);
-  });
-  fileInput.addEventListener('change', e => {
-    if (e.target.files[0]) handleFile(e.target.files[0]);
-  });
+  cameraInput.addEventListener('change', e => e.target.files[0] && handleFile(e.target.files[0]));
+  fileInput.addEventListener('change',   e => e.target.files[0] && handleFile(e.target.files[0]));
 
-  // OCR & reveal form
+  // OCR & log
   scanBtn.addEventListener('click', async () => {
     scanBtn.disabled = true;
-    scanBtn.textContent = '⏳ Scanning...';
+    scanBtn.textContent = '⏳ Scanning…';
 
     const img = new Image();
     img.src = URL.createObjectURL(selectedFile);
     img.onload = async () => {
       const { data: { text } } = await worker.recognize(img);
       console.log('OCR result:', text);
-      // TODO: parse `text` into your form fields
       dataForm.hidden = false;
       scanBtn.textContent = '🔍 Scan & OCR';
       scanBtn.disabled = false;
     };
+
     img.onerror = () => {
       console.error('Image load failed');
       scanBtn.textContent = '🔍 Scan & OCR';
@@ -61,5 +55,5 @@ import { createWorker } from 'https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/di
     };
   });
 
-  // TODO: implement Save Entry and Export to Excel (SheetJS) here
+  // TODO: Save entry and export logic here (unchanged)
 })();
