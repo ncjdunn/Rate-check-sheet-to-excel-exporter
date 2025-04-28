@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OCR Scan Log</title>
   <style>
     body { font-family: sans-serif; padding: 1rem; }
@@ -10,7 +10,7 @@
     table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
     th, td { border: 1px solid #ccc; padding: 0.25rem 0.5rem; text-align: left; }
     #file-name-preview { margin-left: 0.5rem; font-style: italic; }
-    #data-form { margin-top: 1rem; display: grid; grid-template-columns: repeat(auto-fit,minmax(120px,1fr)); gap: 0.5rem; }
+    #data-form { margin-top: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; }
     #data-form label { display: flex; flex-direction: column; font-size: 0.9rem; }
   </style>
 </head>
@@ -28,22 +28,20 @@
 
   <!-- auto-filled form -->
   <form id="data-form" hidden>
-    <label>Date          <input name="date"        type="text"></label>
-    <label>Tube #        <input name="tube"        type="text"></label>
-    <label>Line          <input name="line"        type="text"></label>
-    <label>Weld          <input name="weld"        type="text"></label>
-    <label>Std Chill     <input name="stdChill"    type="text"></label>
-    <label>Emboss Chill  <input name="embossChill" type="text"></label>
-    <label>S1 Start      <input name="s1start"     type="text"></label>
-    <label>S2 Start      <input name="s2start"     type="text"></label>
-    <label>S3 Start      <input name="s3start"     type="text"></label>
-    <label>Line Speed    <input name="lineSpeed"   type="text"></label>
-    <label>Output        <input name="output"      type="text"></label>
-    <label>Screw Speed   <input name="screwSpeed"  type="text"></label>
-    <label>Die Lip       <input name="dieLip"      type="text"></label>
-    <label>% Load        <input name="pctLoad"     type="text"></label>
-    <label>Head Pressure <input name="headPressure" type="text"></label>
-    <label>Comments      <textarea name="comments"></textarea></label>
+    <label>Production Line  <input name="line"        type="text"></label>
+    <label>Date             <input name="date"        type="text"></label>
+    <label>Tube #           <input name="tube"        type="text"></label>
+    <label>Polymer Used     <input name="polymer"     type="text"></label>
+    <label>Pellet Type      <input name="pelletType"  type="text"></label>
+    <label>Percent Load     <input name="pctLoad"     type="text"></label>
+    <label>Head Pressure    <input name="headPressure"type="text"></label>
+    <label>Die Lip          <input name="dieLip"      type="text"></label>
+    <label>Output Setting   <input name="outputSet"   type="text"></label>
+    <label>Screw Speed      <input name="screwSpeed"  type="text"></label>
+    <label>Line Speed       <input name="lineSpeed"   type="text"></label>
+    <label>Chill Pressure   <input name="chillPressure" type="text"></label>
+    <label>Comments         <textarea name="comments"></textarea></label>
+
     <button type="button" id="save-btn">Save Entry</button>
     <button type="button" id="export-btn">Export to Excel</button>
   </form>
@@ -54,10 +52,12 @@
     <tbody></tbody>
   </table>
 
-  <!-- Tesseract.js UMD build -->
+  <!-- Tesseract.js v2 UMD -->
   <script src="https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
-  <!-- SheetJS (XLSX) for export -->
+  <!-- SheetJS for export -->
   <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <!-- main.js -->
   <script src="main.js"></script>
+
 </body>
 </html>
