@@ -1,16 +1,13 @@
-// Wrap everything in an IIFE
 (async () => {
-  // Create worker from global Tesseract
+  // Use global Tesseract UMD
   const { createWorker } = Tesseract;
-
-  const worker = createWorker({
+  const worker = await createWorker({
+    workerPath: 'https://unpkg.com/tesseract.js@2.1.5/dist/worker.min.js',
+    corePath: 'https://unpkg.com/tesseract.js-core@2.1.0/tesseract-core.wasm.js',
     logger: m => console.log('Tesseract:', m)
   });
-  await worker.load();
-  await worker.loadLanguage('eng');
-  await worker.initialize('eng');
 
-  // DOM elements
+  // DOM references
   const cameraBtn = document.getElementById('camera-btn');
   const chooseFileBtn = document.getElementById('choose-file-btn');
   const cameraInput = document.getElementById('camera-input');
@@ -42,6 +39,7 @@
   scanBtn.addEventListener('click', async () => {
     scanBtn.disabled = true;
     scanBtn.textContent = '⏳ Scanning...';
+
     const img = new Image();
     img.src = URL.createObjectURL(selectedFile);
     img.onload = async () => {
@@ -58,5 +56,5 @@
     };
   });
 
-  // Your save and export logic here...
+  // TODO: Save entry and export logic
 })();

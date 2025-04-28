@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>OCR Scan Log</title>
   <style>
     body { font-family: sans-serif; padding: 1rem; }
@@ -15,8 +15,10 @@
   </style>
 </head>
 <body>
+
   <h1>OCR Scan Log</h1>
 
+  <!-- camera / file pick -->
   <button id="camera-btn">📷 Use Camera</button>
   <button id="choose-file-btn">📁 Choose File</button>
   <span id="file-name-preview" hidden></span>
@@ -24,36 +26,27 @@
   <input id="file-input"   type="file" accept="image/*" hidden>
   <button id="scan-btn" hidden disabled>🔍 Scan & OCR</button>
 
+  <!-- auto-filled form -->
   <form id="data-form" hidden>
+    <!-- form fields -->
     <label>Date          <input name="date"        type="text"></label>
-    <label>Tube #        <input name="tube"        type="text"></label>
-    <label>Line          <input name="line"        type="text"></label>
-    <label>Weld          <input name="weld"        type="text"></label>
-    <label>Std Chill     <input name="stdChill"    type="text"></label>
-    <label>Emboss Chill  <input name="embossChill" type="text"></label>
-    <label>S1 Start      <input name="s1start"     type="text"></label>
-    <label>S2 Start      <input name="s2start"     type="text"></label>
-    <label>S3 Start      <input name="s3start"     type="text"></label>
-    <label>Line Speed    <input name="lineSpeed"   type="text"></label>
-    <label>Output        <input name="output"      type="text"></label>
-    <label>Screw Speed   <input name="screwSpeed"  type="text"></label>
-    <label>Die Lip       <input name="dieLip"      type="text"></label>
-    <label>% Load        <input name="pctLoad"     type="text"></label>
-    <label>Head Pressure <input name="headPressure" type="text"></label>
-    <label>Comments      <textarea name="comments"></textarea></label>
-
+    <!-- ... other fields ... -->
     <button type="button" id="save-btn">Save Entry</button>
     <button type="button" id="export-btn">Export to Excel</button>
   </form>
 
+  <!-- table of past entries -->
   <table id="entries-table">
     <thead><tr></tr></thead>
     <tbody></tbody>
   </table>
 
-  <!-- UMD Tesseract.js build and SheetJS -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+  <!-- Tesseract.js UMD -->
+  <script src="https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+  <!-- SheetJS (XLSX) for export -->
   <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <!-- Main JS -->
   <script src="main.js"></script>
+
 </body>
 </html>
