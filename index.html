@@ -28,25 +28,7 @@
 
   <!-- auto-filled form -->
   <form id="data-form" hidden>
-    <label>Date          <input name="date"        type="text"></label>
-    <label>Tube #        <input name="tube"        type="text"></label>
-    <label>Line          <input name="line"        type="text"></label>
-    <label>Weld          <input name="weld"        type="text"></label>
-    <label>Std Chill     <input name="stdChill"    type="text"></label>
-    <label>Emboss Chill  <input name="embossChill" type="text"></label>
-    <label>S1 Start      <input name="s1start"     type="text"></label>
-    <label>S2 Start      <input name="s2start"     type="text"></label>
-    <label>S3 Start      <input name="s3start"     type="text"></label>
-    <label>Line Speed    <input name="lineSpeed"   type="text"></label>
-    <label>Output        <input name="output"      type="text"></label>
-    <label>Screw Speed   <input name="screwSpeed"  type="text"></label>
-    <label>Die Lip       <input name="dieLip"      type="text"></label>
-    <label>% Load        <input name="pctLoad"     type="text"></label>
-    <label>Head Pressure <input name="headPressure" type="text"></label>
-    <label>Comments      <textarea name="comments"></textarea></label>
-
-    <button type="button" id="save-btn">Save Entry</button>
-    <button type="button" id="export-btn">Export to Excel</button>
+    <!-- … your fields … -->
   </form>
 
   <!-- table of past entries -->
@@ -55,12 +37,12 @@
     <tbody></tbody>
   </table>
 
-  <!-- Tesseract.js v2 -->
+  <!-- Tesseract.js v2 (still global) -->
   <script src="https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
-  <!-- SheetJS (XLSX) for export -->
+  <!-- SheetJS for export -->
   <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
-  <!-- Updated main.js -->
-  <script src="main.js"></script>
+  <!-- Now load your ES module -->
+  <script type="module" src="main.js"></script>
 
 </body>
 </html>
