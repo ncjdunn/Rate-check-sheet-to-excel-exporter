@@ -15,13 +15,18 @@
   </style>
 </head>
 <body>
+
   <h1>OCR Scan Log</h1>
+
+  <!-- camera / file pick -->
   <button id="camera-btn">📷 Use Camera</button>
   <button id="choose-file-btn">📁 Choose File</button>
   <span id="file-name-preview" hidden></span>
   <input id="camera-input" type="file" accept="image/*" capture="environment" hidden>
-  <input id="file-input" type="file" accept="image/*" hidden>
+  <input id="file-input"   type="file" accept="image/*" hidden>
   <button id="scan-btn" hidden disabled>🔍 Scan & OCR</button>
+
+  <!-- auto-filled form -->
   <form id="data-form" hidden>
     <label>Date          <input name="date"        type="text"></label>
     <label>Tube #        <input name="tube"        type="text"></label>
@@ -39,14 +44,23 @@
     <label>% Load        <input name="pctLoad"     type="text"></label>
     <label>Head Pressure <input name="headPressure" type="text"></label>
     <label>Comments      <textarea name="comments"></textarea></label>
+
     <button type="button" id="save-btn">Save Entry</button>
     <button type="button" id="export-btn">Export to Excel</button>
   </form>
+
+  <!-- table of past entries -->
   <table id="entries-table">
     <thead><tr></tr></thead>
     <tbody></tbody>
   </table>
+
+  <!-- Tesseract.js v2 -->
   <script src="https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
-  <script type="module" src="main.js"></script>
+  <!-- SheetJS (XLSX) for export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  <!-- Updated main.js -->
+  <script src="main.js"></script>
+
 </body>
 </html>
