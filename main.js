@@ -1,16 +1,13 @@
-(() => {
-  // Create and initialize the Tesseract worker using the global Tesseract object
-  const worker = Tesseract.createWorker({
-    logger: m => console.log('Tesseract:', m)
+import { createWorker } from 'https://unpkg.com/tesseract.js@2.1.5/dist/tesseract.esm.js';
+
+(async () => {
+  const worker = await createWorker({
+    workerPath: 'https://unpkg.com/tesseract.js@2.1.5/dist/worker.min.js',
+    corePath:   'https://unpkg.com/tesseract.js-core@2.1.0/tesseract-core.wasm.js',
+    logger: m => console.log('Tesseract:', m),
   });
 
-  (async () => {
-    await worker.load();
-    await worker.loadLanguage('eng');
-    await worker.initialize('eng');
-  })();
-
-  // DOM references
+  // DOM refs
   const cameraBtn      = document.getElementById('camera-btn');
   const chooseFileBtn  = document.getElementById('choose-file-btn');
   const cameraInput    = document.getElementById('camera-input');
@@ -20,7 +17,7 @@
   const dataForm       = document.getElementById('data-form');
   const entriesTable   = document.getElementById('entries-table');
 
-  // Wire up buttons
+  // Wire up file buttons
   cameraBtn.addEventListener('click', () => cameraInput.click());
   chooseFileBtn.addEventListener('click', () => fileInput.click());
 
@@ -33,35 +30,32 @@
     scanBtn.disabled = false;
   }
 
-  cameraInput.addEventListener('change', e => {
-    if (e.target.files[0]) handleFile(e.target.files[0]);
-  });
-  fileInput.addEventListener('change', e => {
-    if (e.target.files[0]) handleFile(e.target.files[0]);
-  });
+  cameraInput.addEventListener('change', e => e.target.files[0] && handleFile(e.target.files[0]));
+  fileInput.addEventListener('change',   e => e.target.files[0] && handleFile(e.target.files[0]));
 
-  // OCR & display form
+  // OCR flow
   scanBtn.addEventListener('click', async () => {
     scanBtn.disabled = true;
-    scanBtn.textContent = '⏳ Scanning...';
+    scanBtn.textContent = '⏳ Scanning…';
 
     const img = new Image();
     img.src = URL.createObjectURL(selectedFile);
     img.onload = async () => {
       const { data: { text } } = await worker.recognize(img);
       console.log('OCR result:', text);
-      // TODO: parse the `text` into your form fields here
+      // your parsing & form-filling here…
+
       dataForm.hidden = false;
       scanBtn.textContent = '🔍 Scan & OCR';
       scanBtn.disabled = false;
     };
     img.onerror = () => {
       console.error('Image load failed');
-      scanBtn.disabled = false;
       scanBtn.textContent = '🔍 Scan & OCR';
+      scanBtn.disabled = false;
     };
   });
 
-  // TODO: Add your "Save Entry" and "Export to Excel" logic here
+  // TODO: implement “Save Entry” and “Export to Excel” logic…
 
 })();
